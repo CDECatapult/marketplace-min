@@ -8,7 +8,7 @@ services:
     networks:
       synchronicity:
     volumes:
-      - mongo-data:/data/db
+      - ./mongo-data:/data/db
 
   redis:
     image: redis:3.2.8-alpine
@@ -23,12 +23,54 @@ services:
     ports:
       - "3333:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./mysql-data:/var/lib/mysql
     networks:
       synchronicity:
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=mysql-password-here
       - MYSQL_DATABASE=RSS
+
+  proxy:
+    image: digicatsynch/logicproxy7:0.0.18
+    restart: always
+    depends_on:
+      - mongo
+      - apis
+      - catalog
+    ports:
+      - "8004:8004"
+    networks:
+      synchronicity:
+        aliases:
+          - proxy.docker
+    environment:
+      - NODE_ENV=development
+
+      - SENTRY_ENVIRONMENT=devel
+
+      - HOST=proxy.docker
+      - PORT=8004
+      - PROXY_HOST=proxy.docker
+      - EXT_PORT=8004
+
+      - OAUTH2_SERVER=http://idm.docker:3000
+      - OAUTH2_CLIENT_ID=${OAUTH2_CLIENT_ID}
+      - OAUTH2_CLIENT_SECRET=${OAUTH2_CLIENT_SECRET}
+      - OAUTH2_CALLBACK_URL=http://proxy.docker:8004/auth/fiware/callback
+
+      - MONGO_HOST=mongo
+      - REDIS_HOST=redis
+
+      - ENDPOINT_CHARGING_HOST=charging.docker
+      - ENDPOINT_RSS_HOST=rss.docker
+      - ENDPOINT_CATALOG_HOST=catalog.docker
+
+      - ENDPOINT_ORDERING_HOST=apis.docker
+      - ENDPOINT_INVENTORY_HOST=apis.docker
+      - ENDPOINT_PARTY_HOST=apis.docker
+      - ENDPOINT_BILLING_HOST=apis.docker
+      - ENDPOINT_CUSTOMER_HOST=apis.docker
+      - ENDPOINT_USAGE_HOST=apis.docker
 
   charging:
     image: digicatsynch/charging7:7.0.5
@@ -61,9 +103,9 @@ services:
       - AUTHORIZE_SERVICE=http://proxy.docker:8004/authorizeService/token
       - KEYSTONE_PROTOCOL=http
       - KEYSTONE_HOST=idm.docker
-      #- KEYSTONE_USER=admin@test.com
-      #- KEYSTONE_PWD=1234
-      - APP_CLIENT_ID=${APP_CLIENT_ID}
+      - KEYSTONE_USER=admin@test.com
+      - KEYSTONE_PWD=1234
+      #- APP_CLIENT_ID=${APP_CLIENT_ID}
       - APP_URL=http://pep.docker:7000/v2/entities/
 
       - DEBUG=true
@@ -85,7 +127,7 @@ services:
     volumes:
       - ./apis-conf:/etc/default/tmf/
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=mysql-password-here
       - MYSQL_HOST=mysql
 
   catalog:
@@ -103,7 +145,7 @@ services:
     volumes:
       - ./apis-conf:/etc/default/tmf/
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=mysql-password-here
       - MYSQL_HOST=mysql
 
   rss:
@@ -125,7 +167,3 @@ services:
 networks:
   synchronicity:
     external: true
-
-volumes:
-  mongo-data:
-  mysql-data:

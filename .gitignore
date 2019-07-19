@@ -1,0 +1,6 @@
+.env
+*.log
+charging-assets
+charging-bills
+mongo-data
+mysql-data
